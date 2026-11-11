@@ -6,6 +6,18 @@
 
 ---
 
+## 实战案例：虚构中学校园场景
+
+用本 MCP 插件 + Codex 对话式建模的完整校园场景，包含校门门卫、运动场照明、非机动车停车、候车亭等设施群，贴图用 PBR 材质（沥青漫反射/粗糙度 + 混凝土粗糙度），最终导出 62MB OBJ 网格。
+
+| 校门与门卫设施 | 运动场与照明设施 | 非机动车与候车设施 |
+|:---:|:---:|:---:|
+| ![校门](examples/ex_gate_guard.png) | ![运动场](examples/ex_sports_lighting.png) | ![候车](examples/ex_bike_waiting.png) |
+
+建模过程中用到的工具链路：`create_object`（建筑体块）→ `add_modifier`（细分/布尔）→ `set_material` + `add_material_node`（PBR 贴图）→ `create_light`（场景照明）→ `create_camera` + `render_scene`（渲染出图）→ `import_export_scene`（OBJ 导出）。完整对话只需告诉 AI 你想要什么样的校园，它会自主选择工具、设置参数、调整材质并渲染。
+
+---
+
 ## 架构
 
 ```
