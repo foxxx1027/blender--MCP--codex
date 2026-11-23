@@ -18,6 +18,52 @@
 
 ---
 
+## 实战案例 2：物理到数字——视频驱动的 3D 重建
+
+不是从零建模，而是从真实世界拍摄视频、经 COLMAP 光度重建生成可编辑的 3D 网格，再导入 Blender 进行验证。
+
+### 管线流程
+
+```
+物理发动机 → 手机录屏(7s) → 视觉选帧(55/57帧) → COLMAP SfM → 稠密重建 → Poisson网格化 → SSH导入远程Blender
+```
+
+### 步骤拆解
+
+| 步骤 | 工具 | 输入 | 输出 | 真机数据 |
+|---|---|---|---|---|
+| 1. 视觉选帧 | `convert_video.py`（ORB 特征 + 拉普拉斯清晰度 + 灰度直方图变化检测） | 7 秒手机录屏 | 55 张关键帧 JPG + JSON 清单 | 运动阈值 10px / 模糊阈值 55 / 最短间隔 0.2s |
+| 2. SfM 重建 | `ColmapSfMPipeline.py`（COLMAP 4.2.1 特征提取 + 全量匹配 + SfM） | 55 张 JPG | 相机内外参 + 稀疏点云 | **55/55 图像注册（100%）**、4716 稀疏点、重投影误差 **0.943px** |
+| 3. 稠密重建 | `image_undistorter` + `patch_match_stereo` + `stereo_fusion` | SfM 结果 | 稠密点云 PLY | **492,730 个稠密点** |
+| 4. 表面网格化 | `poisson_mesher` | 稠密点云 | 带顶点颜色的表面 PLY | **1,197,412 顶点 / 2,380,974 三角面** |
+| 5. SSH 导入 Blender | `ssh user@10.13.3.221` + `bpy.ops.wm.read_...` | surface.ply | `Engine_COLMAP_Reconstruction.blend` | 55 台相机 + 稀疏点云 + 稠密点云 + 表面网格 + 55 张内嵌参考帧 |
+| 6. OBJ 导出验证 | Blender → OBJ/MTL + 7 张 PNG 贴图 | .blend | V_Twin_Engine.obj（223 部件、60792 顶点、54062 面） | 导入回 Blender 重新渲染验证一致 |
+
+### 效果图
+
+| COLMAP SfM 重建预览 | Poisson 表面网格 | OBJ 导入 Blender 验证 |
+|:---:|:---:|:---:|
+| ![SfM](examples/photogrammetry/reconstruction_preview.png) | ![Surface](examples/photogrammetry/surface_preview.png) | ![OBJ](examples/photogrammetry/OBJ_Import_Preview.png) |
+
+### 关键代码
+
+- `scripts/frame_extraction/convert_video.py` — 视觉选帧脚本（ORB 特征检测 + 拉普拉斯清晰度评分 + 灰度直方图变化 + 运动位移中位数，自动选清晰关键帧）
+- COLMAP 管线使用 COLMAP 4.2.1 自带的 CLI 工具链，未使用 OpenMVS
+
+### 与从零建模的互补
+
+| 维度 | 校园场景（案例 1） | 发动机重建（案例 2） |
+|---|---|---|
+| 起点 | 无 → AI 从零生成 | 物理实物 → 视频拍摄 → 数字重建 |
+| 工具 | MCP 的 83 种建模工具 | Python 抽帧 + COLMAP CLI + SSH Blender 导入 |
+| 产出 | 程序化场景（参数可控） | 真实照片级网格（不可控但精准） |
+| 共同点 | 都经 MCP 服务器 → Blender 主线程 → bpy 执行 |
+
+---
+
+
+---
+
 ## 架构
 
 ```
